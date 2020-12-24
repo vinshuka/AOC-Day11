@@ -1,7 +1,8 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
-
+#include <chrono>
+#include <map>
 //Day11 Part 1
 //Given a layout of seats, where an empty seat is represented by 'L', an occupied seat is represented by '#' and the floor is represented by '.', using the 
 //following rules for how seats become empty or occupied 
@@ -22,6 +23,17 @@
 //we can use a bitset as our bit vector and access it the same way as an array
 //we can covert a 2d aaray to a 1d array using x * Width + y
 //Width is 92, Height is 93
+
+//Part 2
+//The rules have changed slightly, now the we need to look for the first visible seat in each adjacent direction.
+//1.If a seat is empty (L) and there are no visble occupied seats adjacent to it, the seat becomes occupied.
+//2.If a seat is occupied(#) and five or more visble seats adjacent to it are also occupied, the seat becomes empty.
+//3.Otherwise, the seat's state does not change.
+
+//Now we need to look in each direction until we find the first visble seat and check if that seat is occupied. So in order to make this more reasonable we are going to 
+//create a map of <int, vector<pairs<int, int> where for each seat we create a list of its 8 visble neighbours this way we don't have to process and search each time we
+//just look up the vector for that location and check each location in the list. The key will be the 2d to 1d coversion of our input data, this way we can freely convert
+//our [x, y] using x * width + y
 
 std::vector<std::pair<int, int>> neighbours;
 
@@ -56,7 +68,7 @@ std::vector<std::vector<char>> getPuzzleInput()
 	return input;
 }
 
-int checkNeighbours(int row, int col, std::vector<std::vector<char>> input, std::vector<std::pair<int, int>> neighbours)
+int checkNeighbours(int row, int col, const std::vector<std::vector<char>>& input, std::vector<std::pair<int, int>> neighbours)
 {
 	int neighbourCount = 0;
 
@@ -81,7 +93,7 @@ int checkNeighbours(int row, int col, std::vector<std::vector<char>> input, std:
 	return neighbourCount;
 }
 
-int countOccupied(std::vector<std::vector<char>> input)
+int countOccupied(const std::vector<std::vector<char>>& input)
 {
 	int count = 0;
 
@@ -97,7 +109,7 @@ int countOccupied(std::vector<std::vector<char>> input)
 	return count;
 }
 
-void printVector(std::vector<std::vector<char>> input)
+void printVector(const std::vector<std::vector<char>>& input)
 {
 	for (auto l : input)
 	{
@@ -109,7 +121,7 @@ void printVector(std::vector<std::vector<char>> input)
 	}
 }
 
-bool checkStable(std::vector<std::vector<char>> inputOld, std::vector<std::vector<char>> inputNew)
+bool checkStable(const std::vector<std::vector<char>>& inputOld, const std::vector<std::vector<char>>& inputNew)
 {
 	for (int i = 0; i < inputOld.size(); i++)
 	{
@@ -123,18 +135,20 @@ bool checkStable(std::vector<std::vector<char>> inputOld, std::vector<std::vecto
 }
 
 
-//This is sloooooooooooooooowwwwww
+//Much faster after changing to const refs
 int findAnswerPart1(std::vector<std::vector<char>> input)
 {
 	std::vector<std::vector<char>> previousInput = input;
 	std::vector<std::vector<char>> newInput = input;
 
+	
 	bool stabilize = false;
 
-	printVector(previousInput);
+	//printVector(previousInput);
 
 	while (!stabilize)
 	{
+
 		for (int i = 0; i < previousInput.size(); i++)
 		{
 			for (int j = 0; j < previousInput[0].size(); j++)
@@ -157,7 +171,127 @@ int findAnswerPart1(std::vector<std::vector<char>> input)
 			}
 		}
 
-		printVector(newInput);
+		//printVector(newInput);
+		stabilize = checkStable(previousInput, newInput);
+		previousInput = newInput;
+	}
+
+	return countOccupied(newInput);
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------
+//Part2 starts here
+
+std::pair<int, int> search(const std::vector<std::vector<char>>& input, int posX, int posY, int x, int y)
+{
+	bool finished = false;
+	posX += x;
+	posY += y;
+
+	while (true)
+	{
+		//check if x is out of bounds
+		if (posX < 0 || posX > input[0].size() - 1)
+			return std::make_pair(-1, -1); //returns useless pair, which will be caught by outside function, this happens when a point has less than 8 visble seats
+
+		//check if y is out of bounds
+		if (posY < 0 || posY > input.size() - 1)
+			return std::make_pair(-1, -1);
+		//found our visible seat location return it
+		if (input[posY][posX] == 'L')
+			return std::make_pair(posY, posX);
+
+		//if floor check next visible position
+		if (input[posY][posX] == '.')
+		{
+			posX += x;
+			posY += y;
+		}
+	}
+
+}
+
+std::map<int, std::vector<std::pair<int, int>>> createVisibleNeighbourMap(const std::vector<std::vector<char>>& input)
+{
+	std::map<int, std::vector<std::pair<int, int>>> map;
+	for (int y = 0; y < input.size(); y++)
+	{
+		for (int x = 0; x < input[0].size(); x++)
+		{
+			int key = x * input[0].size() + y;
+
+			std::vector<std::pair<int, int>> posNeighbours; //holds our list of visible seats for a position
+
+
+			for (auto n : neighbours)
+			{
+				std::pair<int, int> result = search(input, x, y, n.first, n.second); //uses search to find the position of the first visible seat
+
+				if (result.first >= 0 || result.second >= 0) // checks if it is valid seat
+					posNeighbours.push_back(result); 
+			}
+			map.insert(std::make_pair(key, posNeighbours));
+		}
+	}
+	return map;
+}
+
+//goes through a given list and checks the seats if they are occupied
+int checkVisibleNeighbours(const std::vector<std::vector<char>>& input, std::vector<std::pair<int, int>> visible)
+{
+	int count = 0;
+
+	for (auto v : visible)
+	{
+		if (input[v.first][v.second] == '#')
+			count++;
+	}
+
+	return count;
+}
+
+int findAnswerPart2(std::vector<std::vector<char>> input, std::map<int, std::vector<std::pair<int, int>>> map)
+{
+	std::vector<std::vector<char>> previousInput = input;
+	std::vector<std::vector<char>> newInput = input;
+
+
+	bool stabilize = false;
+
+	//printVector(previousInput);
+
+	while (!stabilize)
+	{
+
+		for (int i = 0; i < previousInput.size(); i++)
+		{
+			for (int j = 0; j < previousInput[0].size(); j++)
+			{
+				if (previousInput[i][j] == '.')
+				{
+					continue;
+				}
+
+				int key = j * previousInput[0].size() + i;
+
+				std::vector<std::pair<int, int>> list = map.at(key);
+
+				int check = checkVisibleNeighbours(previousInput, list);
+
+				
+				if (check == 0)
+				{
+					newInput[i][j] = '#';
+				}
+
+				if (check >= 5)
+				{
+					newInput[i][j] = 'L';
+				}
+			}
+		}
+
+		//printVector(newInput);
 		stabilize = checkStable(previousInput, newInput);
 		previousInput = newInput;
 	}
@@ -178,7 +312,18 @@ int main()
 	neighbours.push_back(std::make_pair(0, -1));
 	neighbours.push_back(std::make_pair(0, 1));
 
-	std::cout << findAnswerPart1(input) << '\n';
+	//auto begin = std::chrono::high_resolution_clock::now();
 
+	//std::cout << findAnswerPart1(input) << '\n';
+
+	//auto end = std::chrono::high_resolution_clock::now();
+	//auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+
+	//std::printf("Time measured: %.3f seconds. \n", elapsed.count() * 1e-9);
+
+	std::map<int, std::vector<std::pair<int, int>>> map = createVisibleNeighbourMap(input);
+
+	std::cout << findAnswerPart2(input, map);
+	
 	return 0;
 }
