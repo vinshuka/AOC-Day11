@@ -3,6 +3,7 @@
 #include <iostream>
 #include <chrono>
 #include <map>
+#include <string>
 //Day11 Part 1
 //Given a layout of seats, where an empty seat is represented by 'L', an occupied seat is represented by '#' and the floor is represented by '.', using the 
 //following rules for how seats become empty or occupied 
@@ -37,38 +38,38 @@
 
 std::vector<std::pair<int, int>> neighbours;
 
-std::vector<std::vector<char>> getPuzzleInput()
+std::vector<std::string> getPuzzleInput()
 {
-	std::vector<std::vector<char>> input;
+	std::vector<std::string> input;
 
 	std::ifstream file;
-	file.open("puzzle-input.txt", std::ios::in);
-	char c;
-	
-	std::vector<char> line;
-	
-	while (!file.eof())
+	std::string line;
+	file.open("puzzle-input.txt");
+	while (std::getline(file, line))
 	{
-		file.get(c);
-		
-		if (c == '\n')
-		{
-			input.push_back(line);
-			line.clear();
-		}
-		else
-		{
-			line.push_back(c);
-		}
+		input.push_back(line);
 	}
-	line.pop_back(); //remove extra character added by eof
-
-	input.push_back(line); //push final line
 
 	return input;
 }
 
-int checkNeighbours(int row, int col, const std::vector<std::vector<char>>& input, std::vector<std::pair<int, int>> neighbours)
+std::vector<std::string> getTestInput()
+{
+	std::vector<std::string> input;
+
+	std::ifstream file;
+	std::string line;
+	file.open("test-input.txt");
+	while (std::getline(file, line))
+	{
+		input.push_back(line);
+	}
+
+	return input;
+}
+
+
+int checkNeighbours(int row, int col, const std::vector<std::string>& input, std::vector<std::pair<int, int>> neighbours)
 {
 	int neighbourCount = 0;
 
@@ -93,7 +94,7 @@ int checkNeighbours(int row, int col, const std::vector<std::vector<char>>& inpu
 	return neighbourCount;
 }
 
-int countOccupied(const std::vector<std::vector<char>>& input)
+int countOccupied(const std::vector<std::string>& input)
 {
 	int count = 0;
 
@@ -109,7 +110,7 @@ int countOccupied(const std::vector<std::vector<char>>& input)
 	return count;
 }
 
-void printVector(const std::vector<std::vector<char>>& input)
+void printVector(const std::vector<std::string>& input)
 {
 	for (auto l : input)
 	{
@@ -121,25 +122,17 @@ void printVector(const std::vector<std::vector<char>>& input)
 	}
 }
 
-bool checkStable(const std::vector<std::vector<char>>& inputOld, const std::vector<std::vector<char>>& inputNew)
+bool checkStable(const std::vector<std::string>& inputOld, const std::vector<std::string>& inputNew)
 {
-	for (int i = 0; i < inputOld.size(); i++)
-	{
-		for (int j = 0; j < inputOld[0].size(); j++)
-		{
-			if (inputOld[i][j] != inputNew[i][j])
-				return false;
-		}
-	}
-	return true;
+	return (inputOld == inputNew);
 }
 
 
 //Much faster after changing to const refs
-int findAnswerPart1(std::vector<std::vector<char>> input)
+int findAnswerPart1(std::vector<std::string> input)
 {
-	std::vector<std::vector<char>> previousInput = input;
-	std::vector<std::vector<char>> newInput = input;
+	std::vector<std::string> previousInput = input;
+	std::vector<std::string> newInput = input;
 
 	
 	bool stabilize = false;
@@ -182,9 +175,8 @@ int findAnswerPart1(std::vector<std::vector<char>> input)
 //----------------------------------------------------------------------------------------------------------------------------------------------------------------
 //Part2 starts here
 
-std::pair<int, int> search(const std::vector<std::vector<char>>& input, int posX, int posY, int x, int y)
+std::pair<int, int> search(const std::vector<std::string>& input, int posX, int posY, int x, int y)
 {
-	bool finished = false;
 	posX += x;
 	posY += y;
 
@@ -201,6 +193,10 @@ std::pair<int, int> search(const std::vector<std::vector<char>>& input, int posX
 		if (input[posY][posX] == 'L')
 			return std::make_pair(posY, posX);
 
+		//added to count occupied seats as visible
+		if (input[posY][posX] == '#')
+			return std::make_pair(posY, posX);
+
 		//if floor check next visible position
 		if (input[posY][posX] == '.')
 		{
@@ -211,7 +207,7 @@ std::pair<int, int> search(const std::vector<std::vector<char>>& input, int posX
 
 }
 
-std::map<int, std::vector<std::pair<int, int>>> createVisibleNeighbourMap(const std::vector<std::vector<char>>& input)
+std::map<int, std::vector<std::pair<int, int>>> createVisibleNeighbourMap(const std::vector<std::string>& input)
 {
 	std::map<int, std::vector<std::pair<int, int>>> map;
 	for (int y = 0; y < input.size(); y++)
@@ -237,7 +233,7 @@ std::map<int, std::vector<std::pair<int, int>>> createVisibleNeighbourMap(const 
 }
 
 //goes through a given list and checks the seats if they are occupied
-int checkVisibleNeighbours(const std::vector<std::vector<char>>& input, std::vector<std::pair<int, int>> visible)
+int checkVisibleNeighbours(const std::vector<std::string>& input, std::vector<std::pair<int, int>> visible)
 {
 	int count = 0;
 
@@ -250,18 +246,19 @@ int checkVisibleNeighbours(const std::vector<std::vector<char>>& input, std::vec
 	return count;
 }
 
-int findAnswerPart2(std::vector<std::vector<char>> input, std::map<int, std::vector<std::pair<int, int>>> map)
+int findAnswerPart2(std::vector<std::string> input)
 {
-	std::vector<std::vector<char>> previousInput = input;
-	std::vector<std::vector<char>> newInput = input;
+	std::vector<std::string> previousInput = input;
+	std::vector<std::string> newInput = input;
 
 
 	bool stabilize = false;
 
-	//printVector(previousInput);
+	printVector(previousInput);
 
 	while (!stabilize)
 	{
+		std::map<int, std::vector<std::pair<int, int>>> map = createVisibleNeighbourMap(previousInput);
 
 		for (int i = 0; i < previousInput.size(); i++)
 		{
@@ -284,24 +281,28 @@ int findAnswerPart2(std::vector<std::vector<char>> input, std::map<int, std::vec
 					newInput[i][j] = '#';
 				}
 
-				if (check >= 5)
+				if (check > 4)
 				{
 					newInput[i][j] = 'L';
 				}
 			}
 		}
 
-		//printVector(newInput);
+		printVector(newInput);
 		stabilize = checkStable(previousInput, newInput);
 		previousInput = newInput;
 	}
+
+	printVector(newInput);
 
 	return countOccupied(newInput);
 }
 
 int main()
 {
-	std::vector<std::vector<char>> input = getPuzzleInput();
+	std::vector<std::string> input = getPuzzleInput();
+
+	std::vector<std::string> test = getTestInput();
 	
 	neighbours.push_back(std::make_pair(-1, -1));
 	neighbours.push_back(std::make_pair(1, 1));
@@ -321,9 +322,9 @@ int main()
 
 	//std::printf("Time measured: %.3f seconds. \n", elapsed.count() * 1e-9);
 
-	std::map<int, std::vector<std::pair<int, int>>> map = createVisibleNeighbourMap(input);
+	std::cout << findAnswerPart2(input) << '\n';
 
-	std::cout << findAnswerPart2(input, map);
+	std::cout << findAnswerPart2(test);
 	
 	return 0;
 }

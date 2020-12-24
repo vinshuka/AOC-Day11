@@ -23,5 +23,8 @@
     <Text Include="puzzle-input.txt">
       <Filter>Source Files</Filter>
     </Text>
+    <Text Include="test-input.txt">
+      <Filter>Source Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>
