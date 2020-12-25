@@ -122,12 +122,6 @@ void printVector(const std::vector<std::string>& input)
 	}
 }
 
-bool checkStable(const std::vector<std::string>& inputOld, const std::vector<std::string>& inputNew)
-{
-	return (inputOld == inputNew);
-}
-
-
 //Much faster after changing to const refs
 int findAnswerPart1(std::vector<std::string> input)
 {
@@ -165,7 +159,7 @@ int findAnswerPart1(std::vector<std::string> input)
 		}
 
 		//printVector(newInput);
-		stabilize = checkStable(previousInput, newInput);
+		stabilize = (previousInput == newInput);
 		previousInput = newInput;
 	}
 
@@ -207,14 +201,14 @@ std::pair<int, int> search(const std::vector<std::string>& input, int posX, int 
 
 }
 
-std::map<int, std::vector<std::pair<int, int>>> createVisibleNeighbourMap(const std::vector<std::string>& input)
+std::map<std::pair<int, int>, std::vector<std::pair<int, int>>> createVisibleNeighbourMap(const std::vector<std::string>& input)
 {
-	std::map<int, std::vector<std::pair<int, int>>> map;
+	std::map<std::pair<int, int>, std::vector<std::pair<int, int>>> map;
 	for (int y = 0; y < input.size(); y++)
 	{
 		for (int x = 0; x < input[0].size(); x++)
 		{
-			int key = x * input[0].size() + y;
+			std::pair<int, int> key = std::make_pair(y, x);
 
 			std::vector<std::pair<int, int>> posNeighbours; //holds our list of visible seats for a position
 
@@ -233,7 +227,7 @@ std::map<int, std::vector<std::pair<int, int>>> createVisibleNeighbourMap(const 
 }
 
 //goes through a given list and checks the seats if they are occupied
-int checkVisibleNeighbours(const std::vector<std::string>& input, std::vector<std::pair<int, int>> visible)
+int checkVisibleNeighbours(const std::vector<std::string>& input, const std::vector<std::pair<int, int>>& visible)
 {
 	int count = 0;
 
@@ -246,7 +240,7 @@ int checkVisibleNeighbours(const std::vector<std::string>& input, std::vector<st
 	return count;
 }
 
-int findAnswerPart2(std::vector<std::string> input)
+int findAnswerPart2(std::vector<std::string> input, const std::map<std::pair<int, int>, std::vector<std::pair<int, int>>>& map)
 {
 	std::vector<std::string> previousInput = input;
 	std::vector<std::string> newInput = input;
@@ -254,11 +248,11 @@ int findAnswerPart2(std::vector<std::string> input)
 
 	bool stabilize = false;
 
-	printVector(previousInput);
+	//printVector(previousInput);
 
 	while (!stabilize)
 	{
-		std::map<int, std::vector<std::pair<int, int>>> map = createVisibleNeighbourMap(previousInput);
+		//std::map<std::pair<int, int>, std::vector<std::pair<int, int>>> map = createVisibleNeighbourMap(previousInput);
 
 		for (int i = 0; i < previousInput.size(); i++)
 		{
@@ -269,7 +263,7 @@ int findAnswerPart2(std::vector<std::string> input)
 					continue;
 				}
 
-				int key = j * previousInput[0].size() + i;
+				std::pair<int, int> key = std::make_pair(i, j);
 
 				std::vector<std::pair<int, int>> list = map.at(key);
 
@@ -281,15 +275,15 @@ int findAnswerPart2(std::vector<std::string> input)
 					newInput[i][j] = '#';
 				}
 
-				if (check > 4)
+				if (check >= 5)
 				{
 					newInput[i][j] = 'L';
 				}
 			}
 		}
 
-		printVector(newInput);
-		stabilize = checkStable(previousInput, newInput);
+		//printVector(newInput);
+		stabilize = (previousInput == newInput);
 		previousInput = newInput;
 	}
 
@@ -322,9 +316,11 @@ int main()
 
 	//std::printf("Time measured: %.3f seconds. \n", elapsed.count() * 1e-9);
 
-	std::cout << findAnswerPart2(input) << '\n';
+	std::map<std::pair<int, int>, std::vector<std::pair<int, int>>> map = createVisibleNeighbourMap(input);
 
-	std::cout << findAnswerPart2(test);
+	std::cout << findAnswerPart2(input, map) << '\n';
+
+	//std::cout << findAnswerPart2(test);
 	
 	return 0;
 }
